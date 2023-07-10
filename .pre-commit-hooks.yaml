@@ -1,0 +1,7 @@
+-   id: issue-key
+    name: Add issue key to commit message
+    description: This hook integrates your ALM tool issue key into commit messages for better tracking.
+    entry: python -m issue_key_hook
+    language: python
+    stages: [prepare-commit-msg]
+
