@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+import argparse
+from collections.abc import Container
 import re
 import subprocess
 import sys
+import typing
 
 
 class UserMessage:
@@ -52,15 +55,15 @@ class CommitMessageFile:
 
 
 class BranchName:
-    def __init__(self, branch_name):
+    def __init__(self, branch_name: str):
         self.branch_name = branch_name
 
-    @property
-    def issue_id(self):
-        project_format = "[A-Z][A-Z]+"
-        issue_pattern = f"{project_format}-[\d]+"
-        match = re.search(issue_pattern, self.branch_name)
+    def get_issue_id(self, pattern: str):
+        match = re.search(pattern, self.branch_name)
         return match.group() if match else None
+
+    def is_ignored(self, ignored_names: Container) -> bool:
+        return self.branch_name in ignored_names
 
     @classmethod
     def fetch_current_branch_name(cls):
@@ -68,24 +71,68 @@ class BranchName:
             return cls(
                 subprocess.check_output("git symbolic-ref HEAD", shell=True)
                 .decode()
-                .strip()[11:]
+                .strip()[11:],
             )
         except subprocess.CalledProcessError:
             print("Error: Unable to append issue ID. Are you in detached HEAD state?")
             sys.exit()
 
 
-def add_issue_key():
-    file_path = sys.argv[1]  # The commit message file passed as a command-line argument
-    message_manager = CommitMessageFile(file_path)
-    issue_id = BranchName.fetch_current_branch_name().issue_id
+def add_issue_key(
+    commit_msg_file: str, pattern: str, required: bool, ignore: Container
+):
+    message_manager = CommitMessageFile(commit_msg_file)
+    branch = BranchName.fetch_current_branch_name()
 
-    if issue_id:
-        original_message = message_manager.read_message()
-        user_message = UserMessage(original_message)
-        if user_message and issue_id not in user_message:
-            message_manager.write_message(CommitMessage(issue_id, user_message))
+    def exit(exitmsg: typing.Optional[str]):
+        if required:
+            sys.exit(exitmsg)
+        else:
+            sys.exit(exitmsg)
+
+    if branch.is_ignored(ignore):
+        exit(
+            "Error: Issue key check skipped as the current branch is on the ignore list. Please use a different branch name if you need to include an issue key."
+        )
+
+    issue_id = branch.get_issue_id(pattern)
+    if not issue_id:
+        exit(
+            "Error: Unable to locate an Issue Key in the branch name. Please ensure that your branch name includes a valid Issue Key according to the specified pattern."
+        )
+
+    original_message = message_manager.read_message()
+    user_message = UserMessage(original_message)
+    if user_message and issue_id not in user_message:
+        message_manager.write_message(CommitMessage(issue_id, user_message))
 
 
 if __name__ == "__main__":
-    add_issue_key()
+    parser = argparse.ArgumentParser(
+        prog="Issue key pre commit",
+        description="A pre-commit hook to add issue key to the commit message",
+    )
+    parser.add_argument("commit_msg_file", help="Path to the commit message file")
+    parser.add_argument(
+        "--pattern",
+        "-p",
+        type=str,
+        help="issue key pattern",
+        default="[A-Z][A-Z]+-[\d]+",
+    )
+    parser.add_argument(
+        "--required",
+        "-r",
+        action="store_false",
+        help="fail if branch name does not contain the issue key according to the pattern",
+    )
+    parser.add_argument(
+        "--ignore",
+        "-i",
+        nargs="+",
+        default=["dev", "develop", "master", "main", "stage", "staging"],
+        help="ignored branch names",
+        type=set,
+    )
+    args = parser.parse_args()
+    add_issue_key(args.commit_msg_file, args.pattern, args.required, args.ignore)
