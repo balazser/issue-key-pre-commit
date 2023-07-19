@@ -88,7 +88,7 @@ def add_issue_key(
         if required:
             sys.exit(exitmsg)
         else:
-            sys.exit(exitmsg)
+            sys.exit()
 
     if branch.is_ignored(ignore):
         exit(
