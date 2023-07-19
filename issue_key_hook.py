@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--required",
         "-r",
-        action="store_false",
+        action="store_true",
         help="fail if branch name does not contain the issue key according to the pattern",
     )
     parser.add_argument(
