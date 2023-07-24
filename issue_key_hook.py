@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-from collections.abc import Container
 import re
 import subprocess
 import sys
@@ -143,7 +142,8 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "--add_issue_key",
+        "--append",
+        dest="add_issue_key",
         action="store_true",
         help="Automatically prefix the commit message with the issue ID.",
     )

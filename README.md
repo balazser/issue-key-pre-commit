@@ -38,7 +38,7 @@ The tool will run automatically when a commit is made if it has been correctly s
 Example usage:
 
 ```bash
-issue-key-pre-commit commit-message.txt -p "[A-Z][A-Z]+-[\d]+" -r --add-issue-key
+issue-key-pre-commit commit-message.txt -p "[A-Z][A-Z]+-[\d]+" -r --append
 
 ## Dependencies
 
