@@ -28,9 +28,17 @@ Please replace `v1.0.0` with the tag/commit you want to use.
 
 The tool will run automatically when a commit is made if it has been correctly set up in your pre-commit configuration. However, you can customize its behavior using the following arguments:
 
+- `commit_msg_file`: This positional argument is the path to the commit message file.
 - `-p, --pattern`: Pattern to match the issue key in the branch name. The default is `[A-Z][A-Z]+-[\d]+`.
 - `-r, --required`: If provided, the script will fail if the branch name doesn't contain the issue key according to the pattern.
-- `-i, --ignore`: List of ignored branch names. Defaults to `["dev", "develop", "master", "main", "stage", "staging"]`.
+- `-i, --ignore-pattern`: A regular expression pattern that matches the ignored branch names. Defaults to `^(dev|develop|master|main|stage|staging)$`.
+- `--add-issue-key`: If provided, the script will automatically prefix the commit message with the issue ID.
+- `--verbose`: Enable verbose mode, providing detailed output in the console.
+
+Example usage:
+
+```bash
+issue-key-pre-commit commit-message.txt -p "[A-Z][A-Z]+-[\d]+" -r --add-issue-key
 
 ## Dependencies
 

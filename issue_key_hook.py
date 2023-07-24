@@ -47,7 +47,7 @@ class CommitMessageFile:
 
     def read_message(self):
         with open(self.file_path, "r") as file:
-            return file.read()
+            return UserMessage(file.read())
 
     def write_message(self, message: CommitMessage):
         with open(self.file_path, "w") as file:
@@ -62,8 +62,8 @@ class BranchName:
         match = re.search(pattern, self.branch_name)
         return match.group() if match else None
 
-    def is_ignored(self, ignored_names: Container) -> bool:
-        return self.branch_name in ignored_names
+    def is_ignored(self, ignored_names: str) -> bool:
+        return bool(re.match(ignored_names, self.branch_name))
 
     @classmethod
     def fetch_current_branch_name(cls):
@@ -79,7 +79,12 @@ class BranchName:
 
 
 def add_issue_key(
-    commit_msg_file: str, pattern: str, required: bool, ignore: Container
+    commit_msg_file: str,
+    pattern: str,
+    required: bool,
+    ignore_pattern: str,
+    add_issue_key: bool,
+    verbose: bool,
 ):
     message_manager = CommitMessageFile(commit_msg_file)
     branch = BranchName.fetch_current_branch_name()
@@ -88,21 +93,25 @@ def add_issue_key(
         if required:
             sys.exit(exitmsg)
         else:
+            if verbose:
+                print(exitmsg)
             sys.exit()
 
-    if branch.is_ignored(ignore):
+    if branch.is_ignored(ignore_pattern):
         exit(
-            "Error: Issue key check skipped as the current branch is on the ignore list. Please use a different branch name if you need to include an issue key."
+            "Issue key is required but check skipped as the current branch is on the ignore list. Please use a different branch name if you need to include an issue key."
         )
 
     issue_id = branch.get_issue_id(pattern)
     if not issue_id:
         exit(
-            "Error: Unable to locate an Issue Key in the branch name. Please ensure that your branch name includes a valid Issue Key according to the specified pattern."
+            "Unable to locate an Issue Key in the branch name. Please ensure that your branch name includes a valid Issue Key according to the specified pattern."
         )
 
-    original_message = message_manager.read_message()
-    user_message = UserMessage(original_message)
+    if not add_issue_key:
+        return
+
+    user_message = message_manager.read_message()
     if user_message and issue_id not in user_message:
         message_manager.write_message(CommitMessage(issue_id, user_message))
 
@@ -117,22 +126,38 @@ if __name__ == "__main__":
         "--pattern",
         "-p",
         type=str,
-        help="issue key pattern",
+        help="Issue key pattern",
         default="[A-Z][A-Z]+-[\d]+",
     )
     parser.add_argument(
         "--required",
         "-r",
         action="store_true",
-        help="fail if branch name does not contain the issue key according to the pattern",
+        help="Fail if branch name does not contain the issue key according to the pattern",
     )
     parser.add_argument(
-        "--ignore",
+        "--ignore_pattern",
         "-i",
-        nargs="+",
-        default=["dev", "develop", "master", "main", "stage", "staging"],
-        help="ignored branch names",
-        type=set,
+        default="^(dev|develop|master|main|stage|staging)$",
+        help="Pattern matching the ignored branch names",
+        type=str,
+    )
+    parser.add_argument(
+        "--add_issue_key",
+        action="store_true",
+        help="Automatically prefix the commit message with the issue ID.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose mode, providing detailed output in the console"
     )
     args = parser.parse_args()
-    add_issue_key(args.commit_msg_file, args.pattern, args.required, args.ignore)
+    add_issue_key(
+        args.commit_msg_file,
+        args.pattern,
+        args.required,
+        args.ignore_pattern,
+        args.add_issue_key,
+        args.verbose,
+    )
